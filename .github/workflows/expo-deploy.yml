@@ -8,43 +8,48 @@ jobs:
   eas-update:
     runs-on: ubuntu-latest
     steps:
-      # Section 2: Node Version Requirements
+      # STEP 1: Setup environment
       - name: Check out repository
         uses: actions/checkout@v2
 
       - name: Set up Node
         uses: actions/setup-node@v2
         with:
-          node-version: 18  # Node 18+ required for React Native (Section 2)
+          node-version: 18
 
-      # Section 9: EAS CLI Version Compatibility
+      # STEP 2: Install latest EAS CLI
       - name: Install Latest EAS CLI
         run: npm install -g eas-cli@latest
 
-      # Section 19: Expo SDK Version Compatibility with Expo Go
-      # Updated to use SDK 52 for physical device compatibility
-      - name: Update package.json for SDK 52 compatibility
+      # STEP 3: Update package.json - using a specifically tested working version combination
+      - name: Update package.json for compatibility
         run: |
-          # Use json tool to modify package.json
           npm install -g json
           
-          # Set Expo to SDK 52
-          json -I -f package.json -e 'this.dependencies.expo = "~52.0.0"'
-          
-          # Set React Native to compatible version for Expo 52
-          json -I -f package.json -e 'this.dependencies["react-native"] = "0.78.0"'
-          
-          # Set React to compatible version for React Native 0.78
-          json -I -f package.json -e 'this.dependencies.react = "19.0.0"'
-          
-          # Update expo-updates to compatible version for SDK 52
-          json -I -f package.json -e 'this.dependencies["expo-updates"] = "~0.24.0"'
+          # Use exact versions known to work together
+          json -I -f package.json -e 'this.dependencies = this.dependencies || {}'
+          json -I -f package.json -e 'this.dependencies.expo = "~49.0.0"'
+          json -I -f package.json -e 'this.dependencies["react-native"] = "0.72.3"'
+          json -I -f package.json -e 'this.dependencies.react = "18.2.0"'
+          json -I -f package.json -e 'this.dependencies["expo-updates"] = "~0.18.12"'
+          json -I -f package.json -e 'this.dependencies["react-native-safe-area-context"] = "4.6.3"'
 
-      # Section 10: Use legacy-peer-deps for dependency conflicts
+      # STEP 4: Add necessary Babel configuration
+      - name: Create babel.config.js
+        run: |
+          echo 'module.exports = function(api) {
+            api.cache(true);
+            return {
+              presets: ["babel-preset-expo"],
+              plugins: ["@babel/plugin-proposal-export-namespace-from"]
+            };
+          };' > babel.config.js
+
+      # STEP 5: Install dependencies with legacy-peer-deps
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      # Section 9: EAS CLI Version in eas.json
+      # STEP 6: Create eas.json
       - name: Create Compatible eas.json
         run: |
           echo '{
@@ -66,58 +71,45 @@ jobs:
             }
           }' > eas.json
 
-      # Section 5 & 7: EAS Configuration in app.json
-      - name: Update app.json with owner and SDK version
+      # STEP 7: Update app.json with owner
+      - name: Update app.json with owner
         run: |
-          if [ -f app.json ]; then
-            # Add owner field to existing app.json
-            json -I -f app.json -e 'this.expo = this.expo || {}'
-            json -I -f app.json -e 'this.expo.owner = "${{ secrets.EXPO_USERNAME }}"'
-            json -I -f app.json -e 'this.expo.runtimeVersion = {"policy": "sdkVersion"}'
-            # Ensure SDK 52
-            json -I -f app.json -e 'this.expo.sdkVersion = "52.0.0"'
-          else
-            # Create new app.json with all required fields including SDK 52
-            echo '{
-              "expo": {
-                "name": "Time Display",
-                "slug": "time-display",
-                "owner": "${{ secrets.EXPO_USERNAME }}",
-                "sdkVersion": "52.0.0",
-                "version": "1.0.0",
-                "orientation": "portrait",
-                "icon": "./assets/icon.png",
-                "splash": {
-                  "image": "./assets/splash.png",
-                  "resizeMode": "contain",
+          echo '{
+            "expo": {
+              "name": "Time Display",
+              "slug": "time-display",
+              "owner": "${{ secrets.EXPO_USERNAME }}",
+              "sdkVersion": "49.0.0",
+              "version": "1.0.0",
+              "orientation": "portrait",
+              "icon": "./assets/icon.png",
+              "splash": {
+                "image": "./assets/splash.png",
+                "resizeMode": "contain",
+                "backgroundColor": "#000000"
+              },
+              "assetBundlePatterns": [
+                "**/*"
+              ],
+              "ios": {
+                "supportsTablet": true
+              },
+              "android": {
+                "adaptiveIcon": {
+                  "foregroundImage": "./assets/adaptive-icon.png",
                   "backgroundColor": "#000000"
-                },
-                "updates": {
-                  "fallbackToCacheTimeout": 0
-                },
-                "assetBundlePatterns": [
-                  "**/*"
-                ],
-                "ios": {
-                  "supportsTablet": true
-                },
-                "android": {
-                  "adaptiveIcon": {
-                    "foregroundImage": "./assets/adaptive-icon.png",
-                    "backgroundColor": "#000000"
-                  }
-                },
-                "web": {
-                  "favicon": "./assets/favicon.png"
-                },
-                "runtimeVersion": {
-                  "policy": "sdkVersion"
                 }
+              },
+              "web": {
+                "favicon": "./assets/favicon.png"
+              },
+              "runtimeVersion": {
+                "policy": "sdkVersion"
               }
-            }' > app.json
-          fi
+            }
+          }' > app.json
 
-      # Section 12: Asset Files for Expo
+      # STEP 8: Create assets
       - name: Create assets directory
         run: mkdir -p assets
 
@@ -128,15 +120,14 @@ jobs:
           curl -s https://raw.githubusercontent.com/expo/expo/master/templates/expo-template-blank/assets/adaptive-icon.png -o assets/adaptive-icon.png
           curl -s https://raw.githubusercontent.com/expo/expo/master/templates/expo-template-blank/assets/favicon.png -o assets/favicon.png
 
-      # Section 3: Using CI=1 instead of --non-interactive
-      # Section 4: GitHub Secrets & Masking
+      # STEP 9: Login to Expo
       - name: Expo Login
         run: CI=1 npx expo login -u ${{ secrets.EXPO_USERNAME }} -p ${{ secrets.EXPO_PASSWORD }}
         
-      # Section 7 & 8: EAS Project Initialization
+      # STEP 10: Initialize EAS Project
       - name: Initialize EAS Project
         run: npx eas init --non-interactive --force
 
-      # Section 6: EAS Update with required parameters
+      # STEP 11: EAS Update
       - name: EAS Update
-        run: npx eas update --branch main --message "GitHub Action update $(date)" --non-interactive
+        run: npx eas update --branch main --message "GitHub Action update" --non-interactive
