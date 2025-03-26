@@ -8,7 +8,6 @@ jobs:
   eas-update:
     runs-on: ubuntu-latest
     steps:
-      # STEP 1: Setup environment
       - name: Check out repository
         uses: actions/checkout@v2
 
@@ -17,24 +16,26 @@ jobs:
         with:
           node-version: 18
 
-      # STEP 2: Install latest EAS CLI
       - name: Install Latest EAS CLI
         run: npm install -g eas-cli@latest
 
-      # STEP 3: Update package.json - using a specifically tested working version combination
-      - name: Update package.json for compatibility
+      # Install babel plugin to handle Flow syntax issues
+      - name: Install babel plugins
+        run: npm install -g @babel/plugin-proposal-export-namespace-from babel-preset-expo
+
+      - name: Update package.json for SDK 52
         run: |
           npm install -g json
           
-          # Use exact versions known to work together
+          # Use SDK 52 as specified in guide section 19
           json -I -f package.json -e 'this.dependencies = this.dependencies || {}'
-          json -I -f package.json -e 'this.dependencies.expo = "~49.0.0"'
-          json -I -f package.json -e 'this.dependencies["react-native"] = "0.72.3"'
+          json -I -f package.json -e 'this.dependencies.expo = "~52.0.0"'
+          json -I -f package.json -e 'this.dependencies["react-native"] = "0.73.2"'
           json -I -f package.json -e 'this.dependencies.react = "18.2.0"'
-          json -I -f package.json -e 'this.dependencies["expo-updates"] = "~0.18.12"'
+          json -I -f package.json -e 'this.dependencies["expo-updates"] = "~0.24.0"'
           json -I -f package.json -e 'this.dependencies["react-native-safe-area-context"] = "4.6.3"'
 
-      # STEP 4: Add necessary Babel configuration
+      # Create babel config to fix Flow type syntax issues
       - name: Create babel.config.js
         run: |
           echo 'module.exports = function(api) {
@@ -45,11 +46,9 @@ jobs:
             };
           };' > babel.config.js
 
-      # STEP 5: Install dependencies with legacy-peer-deps
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      # STEP 6: Create eas.json
       - name: Create Compatible eas.json
         run: |
           echo '{
@@ -71,15 +70,14 @@ jobs:
             }
           }' > eas.json
 
-      # STEP 7: Update app.json with owner
-      - name: Update app.json with owner
+      - name: Update app.json with owner and SDK 52
         run: |
           echo '{
             "expo": {
               "name": "Time Display",
               "slug": "time-display",
               "owner": "${{ secrets.EXPO_USERNAME }}",
-              "sdkVersion": "49.0.0",
+              "sdkVersion": "52.0.0",
               "version": "1.0.0",
               "orientation": "portrait",
               "icon": "./assets/icon.png",
@@ -109,7 +107,6 @@ jobs:
             }
           }' > app.json
 
-      # STEP 8: Create assets
       - name: Create assets directory
         run: mkdir -p assets
 
@@ -120,14 +117,11 @@ jobs:
           curl -s https://raw.githubusercontent.com/expo/expo/master/templates/expo-template-blank/assets/adaptive-icon.png -o assets/adaptive-icon.png
           curl -s https://raw.githubusercontent.com/expo/expo/master/templates/expo-template-blank/assets/favicon.png -o assets/favicon.png
 
-      # STEP 9: Login to Expo
       - name: Expo Login
         run: CI=1 npx expo login -u ${{ secrets.EXPO_USERNAME }} -p ${{ secrets.EXPO_PASSWORD }}
         
-      # STEP 10: Initialize EAS Project
       - name: Initialize EAS Project
         run: npx eas init --non-interactive --force
 
-      # STEP 11: EAS Update
       - name: EAS Update
         run: npx eas update --branch main --message "GitHub Action update" --non-interactive
