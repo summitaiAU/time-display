@@ -2,7 +2,7 @@
   "expo": {
     "name": "Time Display",
     "slug": "time-display",
-    "owner": "YOUR_EXPO_USERNAME", 
+    "owner": "YOUR_EXPO_USERNAME",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,9 +10,6 @@
       "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
-    },
-    "updates": {
-      "fallbackToCacheTimeout": 0
     },
     "assetBundlePatterns": [
       "**/*"
@@ -29,8 +26,16 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "extra": {
+      "eas": {
+        "projectId": "ae646493-acc0-49e6-92b8-62f14fe11797"
+      }
+    },
     "runtimeVersion": {
       "policy": "sdkVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/ae646493-acc0-49e6-92b8-62f14fe11797"
     }
   }
 }
