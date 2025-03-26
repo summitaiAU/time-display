@@ -17,16 +17,10 @@ jobs:
           node-version: 18
 
       - name: Install Latest EAS CLI
-        run: npm install -g eas-cli@latest
-
-      # Install babel plugin to handle Flow syntax issues
-      - name: Install babel plugins
-        run: npm install -g @babel/plugin-proposal-export-namespace-from babel-preset-expo
+        run: npm install -g eas-cli@latest json
 
       - name: Update package.json for SDK 52
         run: |
-          npm install -g json
-          
           # Use SDK 52 as specified in guide section 19
           json -I -f package.json -e 'this.dependencies = this.dependencies || {}'
           json -I -f package.json -e 'this.dependencies.expo = "~52.0.0"'
@@ -34,15 +28,20 @@ jobs:
           json -I -f package.json -e 'this.dependencies.react = "18.2.0"'
           json -I -f package.json -e 'this.dependencies["expo-updates"] = "~0.24.0"'
           json -I -f package.json -e 'this.dependencies["react-native-safe-area-context"] = "4.6.3"'
+          
+          # Add Babel plugins as dev dependencies (not global)
+          json -I -f package.json -e 'this.devDependencies = this.devDependencies || {}'
+          json -I -f package.json -e 'this.devDependencies["@babel/plugin-transform-export-namespace-from"] = "^7.23.4"'
+          json -I -f package.json -e 'this.devDependencies["babel-preset-expo"] = "~9.5.0"'
 
-      # Create babel config to fix Flow type syntax issues
+      # Create babel config with correct plugin name
       - name: Create babel.config.js
         run: |
           echo 'module.exports = function(api) {
             api.cache(true);
             return {
               presets: ["babel-preset-expo"],
-              plugins: ["@babel/plugin-proposal-export-namespace-from"]
+              plugins: ["@babel/plugin-transform-export-namespace-from"]
             };
           };' > babel.config.js
 
