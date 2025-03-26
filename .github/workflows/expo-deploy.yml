@@ -21,25 +21,24 @@ jobs:
       - name: Install Latest EAS CLI
         run: npm install -g eas-cli@latest
 
-      # Section 10: React and React Native Version Compatibility
-      - name: Update package.json for compatibility
+      # Section 19: Expo SDK Version Compatibility with Expo Go
+      # Updated to use SDK 52 for physical device compatibility
+      - name: Update package.json for SDK 52 compatibility
         run: |
           # Use json tool to modify package.json
           npm install -g json
           
-          # Set Expo to a compatible version
-          json -I -f package.json -e 'this.dependencies.expo = "~48.0.18"'
+          # Set Expo to SDK 52
+          json -I -f package.json -e 'this.dependencies.expo = "~52.0.0"'
           
-          # Set React Native to a version compatible with Expo 48
-          json -I -f package.json -e 'this.dependencies["react-native"] = "0.71.8"'
+          # Set React Native to compatible version for Expo 52
+          json -I -f package.json -e 'this.dependencies["react-native"] = "0.78.0"'
           
-          # Ensure React is compatible
-          json -I -f package.json -e 'this.dependencies.react = "18.2.0"'
+          # Set React to compatible version for React Native 0.78
+          json -I -f package.json -e 'this.dependencies.react = "19.0.0"'
           
-          # Add expo-updates if needed (using shell conditional)
-          if ! grep -q '"expo-updates":' package.json; then
-            json -I -f package.json -e 'this.dependencies["expo-updates"] = "~0.16.4"'
-          fi
+          # Update expo-updates to compatible version for SDK 52
+          json -I -f package.json -e 'this.dependencies["expo-updates"] = "~0.24.0"'
 
       # Section 10: Use legacy-peer-deps for dependency conflicts
       - name: Install Dependencies
@@ -68,20 +67,23 @@ jobs:
           }' > eas.json
 
       # Section 5 & 7: EAS Configuration in app.json
-      - name: Update app.json with owner
+      - name: Update app.json with owner and SDK version
         run: |
           if [ -f app.json ]; then
             # Add owner field to existing app.json
             json -I -f app.json -e 'this.expo = this.expo || {}'
             json -I -f app.json -e 'this.expo.owner = "${{ secrets.EXPO_USERNAME }}"'
             json -I -f app.json -e 'this.expo.runtimeVersion = {"policy": "sdkVersion"}'
+            # Ensure SDK 52
+            json -I -f app.json -e 'this.expo.sdkVersion = "52.0.0"'
           else
-            # Create new app.json with all required fields
+            # Create new app.json with all required fields including SDK 52
             echo '{
               "expo": {
                 "name": "Time Display",
                 "slug": "time-display",
                 "owner": "${{ secrets.EXPO_USERNAME }}",
+                "sdkVersion": "52.0.0",
                 "version": "1.0.0",
                 "orientation": "portrait",
                 "icon": "./assets/icon.png",
