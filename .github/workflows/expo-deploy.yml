@@ -16,8 +16,8 @@ jobs:
         with:
           node-version: 18
 
-      - name: Install EAS CLI
-        run: npm install --global eas-cli@latest
+      - name: Install Latest EAS CLI
+        run: npm install -g eas-cli@latest
 
       - name: Check for expo-updates
         run: |
@@ -28,22 +28,19 @@ jobs:
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Setup EAS JSON
+      - name: Create Compatible eas.json
         run: echo '{"cli":{"version":">=15.0.0"},"build":{"development":{"developmentClient":true,"distribution":"internal"},"preview":{"distribution":"internal"},"production":{}},"submit":{"production":{}}}' > eas.json
 
       - name: Update app.json with owner
         run: |
           if [ -f app.json ]; then
-            # Get just the slug from existing app.json
-            APP_SLUG=$(grep -o '"slug"[^,]*' app.json | cut -d'"' -f4 || echo "time-display")
-            # Get the name from existing app.json
-            APP_NAME=$(grep -o '"name"[^,]*' app.json | cut -d'"' -f4 || echo "Time Display")
+            # Add owner field to existing app.json
+            npx json -I -f app.json -e "this.expo.owner = '${{ secrets.EXPO_USERNAME }}'"
+            # Make sure the runtimeVersion is set
+            npx json -I -f app.json -e "this.expo.runtimeVersion = this.expo.runtimeVersion || {'policy': 'sdkVersion'}"
           else
-            APP_SLUG="time-display"
-            APP_NAME="Time Display"
+            echo '{"expo":{"name":"Time Display","slug":"time-display","owner":"${{ secrets.EXPO_USERNAME }}","version":"1.0.0","orientation":"portrait","icon":"./assets/icon.png","splash":{"image":"./assets/splash.png","resizeMode":"contain","backgroundColor":"#000000"},"assetBundlePatterns":["**/*"],"ios":{"supportsTablet":true},"android":{"adaptiveIcon":{"foregroundImage":"./assets/adaptive-icon.png","backgroundColor":"#000000"}},"web":{"favicon":"./assets/favicon.png"},"runtimeVersion":{"policy":"sdkVersion"}}}' > app.json
           fi
-          # Create new app.json with owner field
-          echo '{"expo":{"name":"'$APP_NAME'","slug":"'$APP_SLUG'","owner":"${{ secrets.EXPO_USERNAME }}","version":"1.0.0","orientation":"portrait","icon":"./assets/icon.png","splash":{"image":"./assets/splash.png","resizeMode":"contain","backgroundColor":"#000000"},"assetBundlePatterns":["**/*"],"ios":{"supportsTablet":true},"android":{"adaptiveIcon":{"foregroundImage":"./assets/adaptive-icon.png","backgroundColor":"#000000"}},"web":{"favicon":"./assets/favicon.png"},"runtimeVersion":{"policy":"sdkVersion"}}}' > app.json
 
       - name: Create assets directory
         run: mkdir -p assets
@@ -58,14 +55,8 @@ jobs:
       - name: Expo Login
         run: CI=1 npx expo login -u ${{ secrets.EXPO_USERNAME }} -p ${{ secrets.EXPO_PASSWORD }}
         
-      - name: Create EAS Project
-        run: |
-          # Extract slug and name from app.json
-          APP_SLUG=$(grep -o '"slug"[^,]*' app.json | cut -d'"' -f4)
-          APP_NAME=$(grep -o '"name"[^,]*' app.json | cut -d'"' -f4)
-          
-          # Use eas project:create instead of eas init as recommended in section 8
-          npx eas project:create --name "$APP_NAME" --slug "$APP_SLUG" --type app --non-interactive || echo "Project may already exist"
+      - name: Initialize EAS Project
+        run: npx eas init --non-interactive --force
 
       - name: EAS Update
         run: npx eas update --branch main --message "GitHub Action update" --non-interactive
