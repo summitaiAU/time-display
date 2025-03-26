@@ -21,13 +21,6 @@ jobs:
       - name: Install Latest EAS CLI
         run: npm install -g eas-cli@latest
 
-      # Section 13: expo-updates Package Requirement
-      - name: Check for expo-updates
-        run: |
-          if ! grep -q '"expo-updates":' package.json; then
-            npm install expo-updates --legacy-peer-deps
-          fi
-
       # Section 10: React and React Native Version Compatibility
       - name: Update package.json for compatibility
         run: |
@@ -43,10 +36,10 @@ jobs:
           # Ensure React is compatible
           json -I -f package.json -e 'this.dependencies.react = "18.2.0"'
           
-          # Add expo-updates if needed
-          if (!this.dependencies["expo-updates"]) {
+          # Add expo-updates if needed (using shell conditional)
+          if ! grep -q '"expo-updates":' package.json; then
             json -I -f package.json -e 'this.dependencies["expo-updates"] = "~0.16.4"'
-          }
+          fi
 
       # Section 10: Use legacy-peer-deps for dependency conflicts
       - name: Install Dependencies
