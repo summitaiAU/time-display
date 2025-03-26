@@ -8,40 +8,121 @@ jobs:
   eas-update:
     runs-on: ubuntu-latest
     steps:
+      # Section 2: Node Version Requirements
       - name: Check out repository
         uses: actions/checkout@v2
 
       - name: Set up Node
         uses: actions/setup-node@v2
         with:
-          node-version: 18
+          node-version: 18  # Node 18+ required for React Native (Section 2)
 
+      # Section 9: EAS CLI Version Compatibility
       - name: Install Latest EAS CLI
         run: npm install -g eas-cli@latest
 
+      # Section 13: expo-updates Package Requirement
       - name: Check for expo-updates
         run: |
           if ! grep -q '"expo-updates":' package.json; then
             npm install expo-updates --legacy-peer-deps
           fi
 
+      # Section 10: React and React Native Version Compatibility
+      - name: Update package.json for compatibility
+        run: |
+          # Use json tool to modify package.json
+          npm install -g json
+          
+          # Set Expo to a compatible version
+          json -I -f package.json -e 'this.dependencies.expo = "~48.0.18"'
+          
+          # Set React Native to a version compatible with Expo 48
+          json -I -f package.json -e 'this.dependencies["react-native"] = "0.71.8"'
+          
+          # Ensure React is compatible
+          json -I -f package.json -e 'this.dependencies.react = "18.2.0"'
+          
+          # Add expo-updates if needed
+          if (!this.dependencies["expo-updates"]) {
+            json -I -f package.json -e 'this.dependencies["expo-updates"] = "~0.16.4"'
+          }
+
+      # Section 10: Use legacy-peer-deps for dependency conflicts
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
+      # Section 9: EAS CLI Version in eas.json
       - name: Create Compatible eas.json
-        run: echo '{"cli":{"version":">=15.0.0"},"build":{"development":{"developmentClient":true,"distribution":"internal"},"preview":{"distribution":"internal"},"production":{}},"submit":{"production":{}}}' > eas.json
+        run: |
+          echo '{
+            "cli": {
+              "version": ">=15.0.0"
+            },
+            "build": {
+              "development": {
+                "developmentClient": true,
+                "distribution": "internal"
+              },
+              "preview": {
+                "distribution": "internal"
+              },
+              "production": {}
+            },
+            "submit": {
+              "production": {}
+            }
+          }' > eas.json
 
+      # Section 5 & 7: EAS Configuration in app.json
       - name: Update app.json with owner
         run: |
           if [ -f app.json ]; then
             # Add owner field to existing app.json
-            npx json -I -f app.json -e "this.expo.owner = '${{ secrets.EXPO_USERNAME }}'"
-            # Make sure the runtimeVersion is set
-            npx json -I -f app.json -e "this.expo.runtimeVersion = this.expo.runtimeVersion || {'policy': 'sdkVersion'}"
+            json -I -f app.json -e 'this.expo = this.expo || {}'
+            json -I -f app.json -e 'this.expo.owner = "${{ secrets.EXPO_USERNAME }}"'
+            json -I -f app.json -e 'this.expo.runtimeVersion = {"policy": "sdkVersion"}'
           else
-            echo '{"expo":{"name":"Time Display","slug":"time-display","owner":"${{ secrets.EXPO_USERNAME }}","version":"1.0.0","orientation":"portrait","icon":"./assets/icon.png","splash":{"image":"./assets/splash.png","resizeMode":"contain","backgroundColor":"#000000"},"assetBundlePatterns":["**/*"],"ios":{"supportsTablet":true},"android":{"adaptiveIcon":{"foregroundImage":"./assets/adaptive-icon.png","backgroundColor":"#000000"}},"web":{"favicon":"./assets/favicon.png"},"runtimeVersion":{"policy":"sdkVersion"}}}' > app.json
+            # Create new app.json with all required fields
+            echo '{
+              "expo": {
+                "name": "Time Display",
+                "slug": "time-display",
+                "owner": "${{ secrets.EXPO_USERNAME }}",
+                "version": "1.0.0",
+                "orientation": "portrait",
+                "icon": "./assets/icon.png",
+                "splash": {
+                  "image": "./assets/splash.png",
+                  "resizeMode": "contain",
+                  "backgroundColor": "#000000"
+                },
+                "updates": {
+                  "fallbackToCacheTimeout": 0
+                },
+                "assetBundlePatterns": [
+                  "**/*"
+                ],
+                "ios": {
+                  "supportsTablet": true
+                },
+                "android": {
+                  "adaptiveIcon": {
+                    "foregroundImage": "./assets/adaptive-icon.png",
+                    "backgroundColor": "#000000"
+                  }
+                },
+                "web": {
+                  "favicon": "./assets/favicon.png"
+                },
+                "runtimeVersion": {
+                  "policy": "sdkVersion"
+                }
+              }
+            }' > app.json
           fi
 
+      # Section 12: Asset Files for Expo
       - name: Create assets directory
         run: mkdir -p assets
 
@@ -52,11 +133,15 @@ jobs:
           curl -s https://raw.githubusercontent.com/expo/expo/master/templates/expo-template-blank/assets/adaptive-icon.png -o assets/adaptive-icon.png
           curl -s https://raw.githubusercontent.com/expo/expo/master/templates/expo-template-blank/assets/favicon.png -o assets/favicon.png
 
+      # Section 3: Using CI=1 instead of --non-interactive
+      # Section 4: GitHub Secrets & Masking
       - name: Expo Login
         run: CI=1 npx expo login -u ${{ secrets.EXPO_USERNAME }} -p ${{ secrets.EXPO_PASSWORD }}
         
+      # Section 7 & 8: EAS Project Initialization
       - name: Initialize EAS Project
         run: npx eas init --non-interactive --force
 
+      # Section 6: EAS Update with required parameters
       - name: EAS Update
-        run: npx eas update --branch main --message "GitHub Action update" --non-interactive
+        run: npx eas update --branch main --message "GitHub Action update $(date)" --non-interactive
