@@ -32,26 +32,26 @@ jobs:
       - name: Create or update eas.json
         run: |
           if [ ! -f eas.json ]; then
-            cat > eas.json << 'EOF'
-            {
-              "cli": {
-                "version": ">=15.0.0"
-              },
-              "build": {
-                "development": {
-                  "developmentClient": true,
-                  "distribution": "internal"
-                },
-                "preview": {
-                  "distribution": "internal"
-                },
-                "production": {}
-              },
-              "submit": {
-                "production": {}
-              }
-            }
-            EOF
+            cat > eas.json << EOF
+{
+  "cli": {
+    "version": ">=15.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {}
+  },
+  "submit": {
+    "production": {}
+  }
+}
+EOF
             echo "Created eas.json file"
           fi
 
@@ -59,44 +59,43 @@ jobs:
         run: |
           # Ensure app.json has the correct structure
           if [ ! -f app.json ]; then
-            cat > app.json << 'EOF'
-            {
-              "expo": {
-                "name": "Time Display",
-                "slug": "time-display",
-                "version": "1.0.0",
-                "orientation": "portrait",
-                "icon": "./assets/icon.png",
-                "splash": {
-                  "image": "./assets/splash.png",
-                  "resizeMode": "contain",
-                  "backgroundColor": "#000000"
-                },
-                "updates": {
-                  "fallbackToCacheTimeout": 0,
-                  "url": "https://u.expo.dev/your-project-id"
-                },
-                "assetBundlePatterns": [
-                  "**/*"
-                ],
-                "ios": {
-                  "supportsTablet": true
-                },
-                "android": {
-                  "adaptiveIcon": {
-                    "foregroundImage": "./assets/adaptive-icon.png",
-                    "backgroundColor": "#000000"
-                  }
-                },
-                "web": {
-                  "favicon": "./assets/favicon.png"
-                },
-                "runtimeVersion": {
-                  "policy": "sdkVersion"
-                }
-              }
-            }
-            EOF
+            cat > app.json << EOF
+{
+  "expo": {
+    "name": "Time Display",
+    "slug": "time-display",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+      "foregroundImage": "./assets/adaptive-icon.png",
+      "backgroundColor": "#000000"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    }
+  }
+}
+EOF
             echo "Created app.json file"
           else
             # Make sure app.json has runtimeVersion
