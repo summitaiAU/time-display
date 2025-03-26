@@ -1,0 +1,135 @@
+name: EAS Update (Expo)
+
+on:
+  push:
+    branches: [ "main" ]  # Change this to your default branch if it's not "main"
+
+jobs:
+  eas-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+
+      - name: Set up Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: 18
+
+      - name: Install EAS CLI
+        run: npm install --global eas-cli@latest
+
+      - name: Check for expo-updates
+        run: |
+          # Add expo-updates if it doesn't exist
+          if ! grep -q '"expo-updates":' package.json; then
+            npm install expo-updates --legacy-peer-deps
+          fi
+
+      - name: Install Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Create or update eas.json
+        run: |
+          if [ ! -f eas.json ]; then
+            cat > eas.json << 'EOF'
+            {
+              "cli": {
+                "version": ">=15.0.0"
+              },
+              "build": {
+                "development": {
+                  "developmentClient": true,
+                  "distribution": "internal"
+                },
+                "preview": {
+                  "distribution": "internal"
+                },
+                "production": {}
+              },
+              "submit": {
+                "production": {}
+              }
+            }
+            EOF
+            echo "Created eas.json file"
+          fi
+
+      - name: Update app.json
+        run: |
+          # Ensure app.json has the correct structure
+          if [ ! -f app.json ]; then
+            cat > app.json << 'EOF'
+            {
+              "expo": {
+                "name": "Time Display",
+                "slug": "time-display",
+                "version": "1.0.0",
+                "orientation": "portrait",
+                "icon": "./assets/icon.png",
+                "splash": {
+                  "image": "./assets/splash.png",
+                  "resizeMode": "contain",
+                  "backgroundColor": "#000000"
+                },
+                "updates": {
+                  "fallbackToCacheTimeout": 0,
+                  "url": "https://u.expo.dev/your-project-id"
+                },
+                "assetBundlePatterns": [
+                  "**/*"
+                ],
+                "ios": {
+                  "supportsTablet": true
+                },
+                "android": {
+                  "adaptiveIcon": {
+                    "foregroundImage": "./assets/adaptive-icon.png",
+                    "backgroundColor": "#000000"
+                  }
+                },
+                "web": {
+                  "favicon": "./assets/favicon.png"
+                },
+                "runtimeVersion": {
+                  "policy": "sdkVersion"
+                }
+              }
+            }
+            EOF
+            echo "Created app.json file"
+          else
+            # Make sure app.json has runtimeVersion
+            if ! grep -q "runtimeVersion" app.json; then
+              npx json -I -f app.json -e 'this.expo.runtimeVersion = {"policy": "sdkVersion"}'
+            fi
+          fi
+
+      - name: Create assets directory if needed
+        run: |
+          mkdir -p assets
+          
+          # Download placeholder images if they don't exist
+          if [ ! -f assets/icon.png ]; then
+            curl -s https://raw.githubusercontent.com/expo/expo/master/templates/expo-template-blank/assets/icon.png -o assets/icon.png || echo "Failed to download icon"
+          fi
+          if [ ! -f assets/splash.png ]; then
+            curl -s https://raw.githubusercontent.com/expo/expo/master/templates/expo-template-blank/assets/splash.png -o assets/splash.png || echo "Failed to download splash"
+          fi
+          if [ ! -f assets/adaptive-icon.png ]; then
+            curl -s https://raw.githubusercontent.com/expo/expo/master/templates/expo-template-blank/assets/adaptive-icon.png -o assets/adaptive-icon.png || echo "Failed to download adaptive icon"
+          fi
+          if [ ! -f assets/favicon.png ]; then
+            curl -s https://raw.githubusercontent.com/expo/expo/master/templates/expo-template-blank/assets/favicon.png -o assets/favicon.png || echo "Failed to download favicon"
+          fi
+
+      - name: Expo Login
+        run: CI=1 npx expo login -u ${{ secrets.EXPO_USERNAME }} -p ${{ secrets.EXPO_PASSWORD }}
+        
+      - name: Create EAS Project if needed and configure
+        run: |
+          # Try to initialize EAS with force flag
+          npx eas-cli init --non-interactive --force || echo "EAS project may already exist, continuing..."
+
+      - name: EAS Update
+        run: npx eas update --branch main --message "GitHub Action update $(date)" --non-interactive
