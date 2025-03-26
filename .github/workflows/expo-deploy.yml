@@ -16,70 +16,105 @@ jobs:
         with:
           node-version: 18
 
+      - name: Clean install
+        run: |
+          rm -rf node_modules
+          rm -f package-lock.json
+
       - name: Install Latest EAS CLI
         run: npm install -g eas-cli@latest json
 
-      - name: Update package.json for SDK 52
+      # Create a completely new package.json with SDK 52 compatible versions
+      - name: Create fresh package.json
         run: |
-          # Use SDK 52 as specified in guide section 19
-          json -I -f package.json -e 'this.dependencies = this.dependencies || {}'
-          json -I -f package.json -e 'this.dependencies.expo = "~52.0.0"'
-          json -I -f package.json -e 'this.dependencies["react-native"] = "0.73.2"'
-          json -I -f package.json -e 'this.dependencies.react = "18.2.0"'
-          json -I -f package.json -e 'this.dependencies["expo-updates"] = "~0.24.0"'
-          json -I -f package.json -e 'this.dependencies["react-native-safe-area-context"] = "4.6.3"'
-          
-          # Add Babel plugins as dev dependencies (not global)
-          json -I -f package.json -e 'this.devDependencies = this.devDependencies || {}'
-          json -I -f package.json -e 'this.devDependencies["@babel/plugin-transform-export-namespace-from"] = "^7.23.4"'
-          json -I -f package.json -e 'this.devDependencies["babel-preset-expo"] = "~9.5.0"'
+          echo '{
+            "name": "time-display",
+            "version": "1.0.0",
+            "private": true,
+            "main": "node_modules/expo/AppEntry.js",
+            "scripts": {
+              "start": "expo start",
+              "android": "expo start --android",
+              "ios": "expo start --ios",
+              "web": "expo start --web"
+            },
+            "dependencies": {
+              "expo": "~52.0.0",
+              "expo-status-bar": "~1.11.1",
+              "expo-updates": "~0.24.8",
+              "react": "19.0.0",
+              "react-dom": "19.0.0",
+              "react-native": "0.73.2",
+              "react-native-safe-area-context": "4.8.2",
+              "react-native-web": "~0.19.6"
+            },
+            "devDependencies": {
+              "@babel/core": "^7.20.0",
+              "@babel/plugin-transform-export-namespace-from": "^7.23.4",
+              "babel-preset-expo": "~10.0.0"
+            }
+          }' > package.json
 
-      # Create babel config with correct plugin name
+      # Create minimal App.js
+      - name: Create App.js
+        run: |
+          echo 'import React from "react";
+          import { StyleSheet, Text, View } from "react-native";
+          
+          export default function App() {
+            return (
+              <View style={styles.container}>
+                <Text style={styles.text}>Time Display App</Text>
+              </View>
+            );
+          }
+          
+          const styles = StyleSheet.create({
+            container: {
+              flex: 1,
+              backgroundColor: "#000",
+              alignItems: "center",
+              justifyContent: "center",
+            },
+            text: {
+              color: "#fff",
+              fontSize: 24,
+            },
+          });' > App.js
+
+      # Create babel config
       - name: Create babel.config.js
         run: |
           echo 'module.exports = function(api) {
             api.cache(true);
             return {
-              presets: ["babel-preset-expo"],
-              plugins: ["@babel/plugin-transform-export-namespace-from"]
+              presets: ["babel-preset-expo"]
             };
           };' > babel.config.js
+
+      # Create fresh metro config
+      - name: Create metro.config.js
+        run: |
+          echo 'const { getDefaultConfig } = require("expo/metro-config");
+          
+          const config = getDefaultConfig(__dirname);
+          
+          module.exports = config;' > metro.config.js
 
       - name: Install Dependencies
         run: npm install --legacy-peer-deps
 
-      - name: Create Compatible eas.json
-        run: |
-          echo '{
-            "cli": {
-              "version": ">=15.0.0"
-            },
-            "build": {
-              "development": {
-                "developmentClient": true,
-                "distribution": "internal"
-              },
-              "preview": {
-                "distribution": "internal"
-              },
-              "production": {}
-            },
-            "submit": {
-              "production": {}
-            }
-          }' > eas.json
-
-      - name: Update app.json with owner and SDK 52
+      - name: Create app.json
         run: |
           echo '{
             "expo": {
               "name": "Time Display",
               "slug": "time-display",
               "owner": "${{ secrets.EXPO_USERNAME }}",
-              "sdkVersion": "52.0.0",
               "version": "1.0.0",
               "orientation": "portrait",
               "icon": "./assets/icon.png",
+              "userInterfaceStyle": "light",
               "splash": {
                 "image": "./assets/splash.png",
                 "resizeMode": "contain",
@@ -100,11 +135,40 @@ jobs:
               "web": {
                 "favicon": "./assets/favicon.png"
               },
+              "extra": {
+                "eas": {
+                  "projectId": "ae646493-acc0-49e6-92b8-62f14fe11797"
+                }
+              },
               "runtimeVersion": {
                 "policy": "sdkVersion"
+              },
+              "updates": {
+                "url": "https://u.expo.dev/ae646493-acc0-49e6-92b8-62f14fe11797"
               }
             }
           }' > app.json
+
+      - name: Create eas.json
+        run: |
+          echo '{
+            "cli": {
+              "version": ">=3.13.0"
+            },
+            "build": {
+              "development": {
+                "developmentClient": true,
+                "distribution": "internal"
+              },
+              "preview": {
+                "distribution": "internal"
+              },
+              "production": {}
+            },
+            "submit": {
+              "production": {}
+            }
+          }' > eas.json
 
       - name: Create assets directory
         run: mkdir -p assets
