@@ -52,56 +52,6 @@ jobs:
   }
 }
 EOF
-            echo "Created eas.json file"
-          fi
-
-      - name: Update app.json
-        run: |
-          # Ensure app.json has the correct structure
-          if [ ! -f app.json ]; then
-            cat > app.json << EOF
-{
-  "expo": {
-    "name": "Time Display",
-    "slug": "time-display",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#000000"
-    },
-    "updates": {
-      "fallbackToCacheTimeout": 0
-    },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
-    "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-      "foregroundImage": "./assets/adaptive-icon.png",
-      "backgroundColor": "#000000"
-      }
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
-    "runtimeVersion": {
-      "policy": "sdkVersion"
-    }
-  }
-}
-EOF
-            echo "Created app.json file"
-          else
-            # Make sure app.json has runtimeVersion
-            if ! grep -q "runtimeVersion" app.json; then
-              npx json -I -f app.json -e 'this.expo.runtimeVersion = {"policy": "sdkVersion"}'
-            fi
           fi
 
       - name: Create assets directory if needed
